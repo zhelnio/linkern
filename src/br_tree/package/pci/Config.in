@@ -1,0 +1,8 @@
+comment "hello-module needs a Linux kernel to be built"
+	depends on !BR2_LINUX_KERNEL
+
+config BR2_PACKAGE_PCIEDU_MODULE
+	bool "PCI edu module"
+	depends on BR2_LINUX_KERNEL
+	help
+		PCI edu kernel module.
