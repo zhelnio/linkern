@@ -1,0 +1,8 @@
+[submodule "linux"]
+	path = linux
+	url = /home/stas/projects/mirror/linux.git
+	ignore = untracked
+[submodule "buildroot"]
+	path = buildroot
+	url = /home/stas/projects/mirror/buildroot.git
+	ignore = untracked
