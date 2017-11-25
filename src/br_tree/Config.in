@@ -1,4 +1,4 @@
 
 source "$BR2_EXTERNAL_KERNMOD_PATH/package/hello/Config.in"
 source "$BR2_EXTERNAL_KERNMOD_PATH/package/pci/Config.in"
-source "$BR2_EXTERNAL_KERNMOD_PATH/package/xilpci/Config.in"
+source "$BR2_EXTERNAL_KERNMOD_PATH/package/misc/Config.in"

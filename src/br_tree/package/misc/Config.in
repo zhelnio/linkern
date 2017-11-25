@@ -1,0 +1,8 @@
+comment "misc-module needs a Linux kernel to be built"
+	depends on !BR2_LINUX_KERNEL
+
+config BR2_PACKAGE_XILPCI_MODULE
+	bool "misc char device demo module"
+	depends on BR2_LINUX_KERNEL
+	help
+		misc char device demo module
