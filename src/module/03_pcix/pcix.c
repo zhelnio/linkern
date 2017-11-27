@@ -16,18 +16,22 @@ static struct pci_device_id pci_ids[] = {
 };
 MODULE_DEVICE_TABLE(pci, pci_ids);
 
+//TODO: make device specific (dev private data)
+static void __iomem *mmio;
+static unsigned long bufsize;
+
 static ssize_t pcix_read(struct file *file, char __user *buf,
 						size_t count, loff_t *ppos)
 {
-	return 0;
-	//return simple_read_from_buffer(buf, count, ppos, buffer, BUF_SIZE);
+	//TODO: make device specific (dev private data)
+	return simple_read_from_buffer(buf, count, ppos, mmio, bufsize);
 }
 
 static ssize_t pcix_write(struct file *file, const char __user *udata,
 						size_t count, loff_t *ppos)
 {
-	return -1;
-	//return simple_write_to_buffer(buffer, BUF_SIZE, ppos, udata, count);
+	//TODO: make device specific (dev private data)
+	return simple_write_to_buffer(mmio, bufsize, ppos, udata, count);
 }
 
 const struct file_operations misc_fops = {
@@ -51,11 +55,16 @@ static int pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		goto error;
 	}
 
+	//TODO : find in /sys
 	if (pci_request_region(dev, PCIX_BAR, "myregion0")) {
 		dev_err(&(dev->dev), "pci_request_region\n");
 		goto error;
 	}
 
+	bufsize = pci_resource_len(dev, PCIX_BAR);
+
+	//TODO : add mmap using to avoid user<->kernel transfers
+	mmio = pci_iomap(dev, PCIX_BAR, bufsize);
 
 	if (misc_register(&misc_dev)){
 		dev_err(&(dev->dev), "misc_register\n");
@@ -81,14 +90,14 @@ static struct pci_driver pci_driver = {
 	.remove   = pci_remove,
 };
 
-static int  pcix_init(void)
+static int  __init pcix_init(void)
 {
 	//TODO: check error code rules
 	pr_info("pci_register_driver\n");
 	return pci_register_driver(&pci_driver);
 }
 
-static void pcix_exit(void)
+static void __exit pcix_exit(void)
 {
 	pr_info("pci_unregister_driver\n");
 	pci_unregister_driver(&pci_driver);
