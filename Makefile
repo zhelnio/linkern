@@ -46,6 +46,10 @@ pci:
 	$(MAKE) $(BROPT) pci-dirclean
 	$(MAKE) $(BROPT) pci-rebuild
 
+pcix:
+	$(MAKE) $(BROPT) pcix-dirclean
+	$(MAKE) $(BROPT) pcix-rebuild
+
 misc:
 	$(MAKE) $(BROPT) misc-dirclean
 	$(MAKE) $(BROPT) misc-rebuild
@@ -59,7 +63,7 @@ buildroot:
 	$(MAKE) $(BROPT) all
 
 # rebuild all
-all: hello pci misc buildroot
+all: hello pci misc pcix buildroot
 
 clean:
 	rm -rf obj

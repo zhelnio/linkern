@@ -1,0 +1,8 @@
+comment "Pcix-module needs a Linux kernel to be built"
+	depends on !BR2_LINUX_KERNEL
+
+config BR2_PACKAGE_XILPCI_MODULE
+	bool "Pcix device demo module"
+	depends on BR2_LINUX_KERNEL
+	help
+		Pcix device demo module
