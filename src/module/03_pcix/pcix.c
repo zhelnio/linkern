@@ -1,61 +1,99 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/pci.h>
 #include <linux/miscdevice.h>
-#include <linux/uaccess.h>
-#include <linux/string.h>
 #include <linux/fs.h>
 
-#define BUF_SIZE		100
-#define BUF_DEFAULT		"Pcix Hello!\n"
+#define PCIX_NAME 		"pcix"
+#define PCIX_BAR 		0
+#define PCIX_VENDOR_ID	0x1234
+#define PCIX_DEVICE_ID	0x11e8
 
-char buffer[BUF_SIZE];
+static struct pci_device_id pci_ids[] = {
+	{ PCI_DEVICE(PCIX_VENDOR_ID, PCIX_DEVICE_ID), },
+	{ 0, }
+};
+MODULE_DEVICE_TABLE(pci, pci_ids);
 
-static ssize_t misc_read(struct file *file, char __user *buf,
+static ssize_t pcix_read(struct file *file, char __user *buf,
 						size_t count, loff_t *ppos)
 {
-	return simple_read_from_buffer(buf, count, ppos, buffer, BUF_SIZE);
+	return 0;
+	//return simple_read_from_buffer(buf, count, ppos, buffer, BUF_SIZE);
 }
 
-static ssize_t misc_write(struct file *file, const char __user *udata,
+static ssize_t pcix_write(struct file *file, const char __user *udata,
 						size_t count, loff_t *ppos)
 {
-	return simple_write_to_buffer(buffer, BUF_SIZE, ppos, udata, count);
+	return -1;
+	//return simple_write_to_buffer(buffer, BUF_SIZE, ppos, udata, count);
 }
 
 const struct file_operations misc_fops = {
 	.owner		= THIS_MODULE,
-	.read		= misc_read,
-	.write		= misc_write,
+	.read		= pcix_read,
+	.write		= pcix_write,
 };
 
 static struct miscdevice misc_dev = {
 	MISC_DYNAMIC_MINOR,
-	"misc",
+	PCIX_NAME,
 	&misc_fops
 };
 
-int  __init misc_init(void)
+static int pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
-	int ret = 0;
-	
-	pr_info("misc init\n");
+	pr_info("pci_probe\n");
 
-	strncpy(buffer, BUF_DEFAULT, BUF_SIZE);
+	if (pci_enable_device(dev)) {
+		dev_err(&(dev->dev), "pci_enable_device\n");
+		goto error;
+	}
 
-	ret = misc_register(&misc_dev);
-	if (ret != 0)
-		goto out;
+	if (pci_request_region(dev, PCIX_BAR, "myregion0")) {
+		dev_err(&(dev->dev), "pci_request_region\n");
+		goto error;
+	}
 
-out:
-	return ret;
+
+	if (misc_register(&misc_dev)){
+		dev_err(&(dev->dev), "misc_register\n");
+		goto error;
+	}
+
+	return 0;
+error:
+	//TODO: check error code rules
+	return 1;
 }
 
-void __exit misc_exit(void)
+static void pci_remove(struct pci_dev *dev)
 {
-	pr_info("misc exit\n");
+	pr_info("pci_remove\n");
+	pci_release_region(dev, PCIX_BAR);
 }
 
-module_init(misc_init)
-module_exit(misc_exit)
+static struct pci_driver pci_driver = {
+	.name     = PCIX_NAME,
+	.id_table = pci_ids,
+	.probe    = pci_probe,
+	.remove   = pci_remove,
+};
+
+static int  pcix_init(void)
+{
+	//TODO: check error code rules
+	pr_info("pci_register_driver\n");
+	return pci_register_driver(&pci_driver);
+}
+
+static void pcix_exit(void)
+{
+	pr_info("pci_unregister_driver\n");
+	pci_unregister_driver(&pci_driver);
+}
+
+module_init(pcix_init)
+module_exit(pcix_exit)
 MODULE_LICENSE("GPL");
