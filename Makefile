@@ -61,7 +61,7 @@ buildroot:
 # rebuild all
 all: hello pci misc buildroot
 
-clean_all:
+clean:
 	rm -rf obj
 
 #################################
