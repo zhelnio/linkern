@@ -74,7 +74,7 @@ static int pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	return 0;
 error:
 	//TODO: check error code rules
-	return 1;
+	return -1;
 }
 
 static void pci_remove(struct pci_dev *dev)
