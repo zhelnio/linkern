@@ -4,11 +4,14 @@
 #include <linux/pci.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <linux/ioport.h>
 
 #define PCIX_NAME 		"pcix"
 #define PCIX_BAR 		0
 #define PCIX_VENDOR_ID	0x1234
 #define PCIX_DEVICE_ID	0x11e8
+
+#define PCIX_BUF_SIZE	100
 
 static struct pci_device_id pci_ids[] = {
 	{ PCI_DEVICE(PCIX_VENDOR_ID, PCIX_DEVICE_ID), },
@@ -20,18 +23,23 @@ MODULE_DEVICE_TABLE(pci, pci_ids);
 static void __iomem *mmio;
 static unsigned long bufsize;
 
+static char* buffer;
+
 static ssize_t pcix_read(struct file *file, char __user *buf,
 						size_t count, loff_t *ppos)
 {
 	//TODO: make device specific (dev private data)
-	return simple_read_from_buffer(buf, count, ppos, mmio, bufsize);
+	memcpy_fromio(buffer, mmio, PCIX_BUF_SIZE);
+	return simple_read_from_buffer(buf, count, ppos, buffer, PCIX_BUF_SIZE);
 }
 
 static ssize_t pcix_write(struct file *file, const char __user *udata,
 						size_t count, loff_t *ppos)
 {
 	//TODO: make device specific (dev private data)
-	return simple_write_to_buffer(mmio, bufsize, ppos, udata, count);
+	ssize_t res = simple_write_to_buffer(buffer, PCIX_BUF_SIZE, ppos, udata, count);
+	memcpy_toio(mmio, buffer, PCIX_BUF_SIZE);
+	return res;
 }
 
 const struct file_operations misc_fops = {
@@ -46,6 +54,27 @@ static struct miscdevice misc_dev = {
 	&misc_fops
 };
 
+static void pci_debug_info(struct pci_dev *dev)
+{
+	unsigned long temp;
+
+	temp = pci_resource_start(dev, PCIX_BAR);
+	pr_info("pci_resource_start 0x%lx\n", temp);
+
+	temp = pci_resource_end(dev, PCIX_BAR);
+	pr_info("pci_resource_end 0x%lx\n", temp);
+
+	temp = pci_resource_flags(dev, PCIX_BAR);
+	if(temp & IORESOURCE_IO)
+		pr_info("pci_resource_flags IORESOURCE_IO\n");
+	if(temp & IORESOURCE_MEM)
+		pr_info("pci_resource_flags IORESOURCE_MEM\n");
+	if(temp & IORESOURCE_PREFETCH)
+		pr_info("pci_resource_flags IORESOURCE_PREFETCH\n");
+	if(temp & IORESOURCE_READONLY)
+		pr_info("pci_resource_flags IORESOURCE_READONLY\n");
+}
+
 static int pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	pr_info("pci_probe\n");
@@ -55,16 +84,26 @@ static int pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		goto error;
 	}
 
+	//debug
+	pci_debug_info(dev);
+
 	//TODO : find in /sys
 	if (pci_request_region(dev, PCIX_BAR, "myregion0")) {
 		dev_err(&(dev->dev), "pci_request_region\n");
 		goto error;
 	}
 
-	bufsize = pci_resource_len(dev, PCIX_BAR);
+	//request buffer
+	buffer = kmalloc(PCIX_BUF_SIZE, GFP_KERNEL);
+	if (!buffer){
+		dev_err(&(dev->dev), "kmalloc\n");
+		goto error;
+	}
 
-	//TODO : add mmap using to avoid user<->kernel transfers
-	mmio = pci_iomap(dev, PCIX_BAR, bufsize);
+	//TODO : add mmap use to avoid user<->kernel transfers
+	mmio = pci_iomap(dev, PCIX_BAR, 0);
+
+
 
 	if (misc_register(&misc_dev)){
 		dev_err(&(dev->dev), "misc_register\n");
@@ -80,6 +119,9 @@ error:
 static void pci_remove(struct pci_dev *dev)
 {
 	pr_info("pci_remove\n");
+
+	misc_deregister(&misc_dev);
+
 	pci_release_region(dev, PCIX_BAR);
 }
 
